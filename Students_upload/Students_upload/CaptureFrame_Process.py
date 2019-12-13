@@ -1,8 +1,10 @@
 import cv2
+import numpy as np
 import os
 import pandas as pd
-import Localization
-import Recognize
+from Students_upload.Students_upload import Recognize
+from Students_upload.Students_upload import Localization
+import matplotlib as plt
 
 """
 In this file, you will define your own CaptureFrame_Process funtion. In this function,
@@ -17,4 +19,44 @@ Inputs:(three)
 	3. save_path: final .csv file path
 Output: None
 """
+
+
 def CaptureFrame_Process(file_path, sample_frequency, save_path):
+    vidcap = cv2.VideoCapture(file_path)
+
+    # extracting meta information about the video
+    height = int(vidcap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    width = int(vidcap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    length = int(vidcap.get(cv2.CAP_PROP_FRAME_COUNT))
+    fps = vidcap.get(cv2.CAP_PROP_FPS)
+
+    # calculating new array length
+    lenNew = 0
+    if (fps != 0.0):
+        lenNew = int(length * (sample_frequency / fps))
+
+    # setting up the array
+    emptyFrame = (int, float, np.array((height, width, 3)))
+    images = np.array([emptyFrame] * lenNew)
+
+    # inserting images
+    counter = 0
+    for i in np.arange(int(lenNew)):
+        for j in np.arange(int(fps / sample_frequency) - 1):  #skip the next (fps/sampling_frequency) - 1 frames
+            counter = counter + 1
+            ret, frame = vidcap.read()
+        images[i] = (counter, counter / fps, frame)
+
+    return images
+
+
+def show_images(images):
+    for i in images:
+        (frameNr, timeStamp, frame) = i
+        cv2.imshow('Frame number: %s, TimeStamp: %s' % (frameNr, timeStamp), frame / 256)
+        cv2.waitKey()
+        cv2.destroyAllWindows()
+
+## example for how to use the functions
+arr = CaptureFrame_Process('trainingsvideo.avi', 0.2, 'abc')
+show_images(arr)

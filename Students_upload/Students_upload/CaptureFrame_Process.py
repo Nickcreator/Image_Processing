@@ -53,7 +53,12 @@ def CaptureFrame_Process(file_path, sample_frequency, save_path):
 def show_images(images):
     for i in images:
         (frameNr, timeStamp, frame) = i
-        cv2.imshow('Frame number: %s, TimeStamp: %s' % (frameNr, timeStamp), frame / 256)
+        cv2.imshow('Frame number: %s, TimeStamp: %s' % (frameNr, timeStamp ), frame / 256)
+        print(frame)
+        cv2.destroyAllWindows()
+        cv2.waitKey()
+        binary_im = Localization.plate_detection(frame)
+        cv2.imshow('Binary image', binary_im)
         cv2.waitKey()
         cv2.destroyAllWindows()
 

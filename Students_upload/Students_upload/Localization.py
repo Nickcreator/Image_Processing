@@ -42,10 +42,10 @@ def plate_detection(im):
     im_gray = cv2.cvtColor(im2, cv2.COLOR_RGB2GRAY)
     threshold = 100
     binary_im = cv2.threshold(im_gray, threshold, 255, cv2.THRESH_BINARY_INV)
-    return im_gray
+    return binary_im[1]
 
-im = cv2.imread('Nummerbord.jpg', cv2.IMREAD_COLOR)
-binary_im = plate_detection(im)
-cv2.imshow('Binary image', binary_im)
-cv2.waitKey()
-cv2.destroyAllWindows()
+#im = cv2.imread('Nummerbord.jpg', cv2.IMREAD_COLOR)
+#binary_im = plate_detection(im)
+#cv2.imshow('Binary image', binary_im)
+#cv2.waitKey()
+#cv2.destroyAllWindows()

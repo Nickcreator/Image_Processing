@@ -63,5 +63,5 @@ def show_images(images):
         cv2.destroyAllWindows()
 
 ## example for how to use the functions
-arr = CaptureFrame_Process('trainingsvideo.avi', 0.2, 'abc')
-show_images(arr)
+#arr = CaptureFrame_Process('trainingsvideo.avi', 0.2, 'abc')
+#show_images(arr)

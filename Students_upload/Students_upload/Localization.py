@@ -63,7 +63,7 @@ def stack_images(scale, images):
 def gray_stretch(img):
     for i in range(0, len(img)):
         for j in range(0, len(img[i])):
-            a = (255/60)*(img[i,j]-65)
+            a = (255/50)*(img[i,j]-50)
             b = min(a,255)
             img[i,j] = max(b,0)
     return img

@@ -2,7 +2,6 @@ import cv2
 import numpy as np
 import os
 import pandas as pd
-from Students_upload.Students_upload import Recognize
 from Students_upload.Students_upload import Localization
 import matplotlib as plt
 
@@ -57,11 +56,12 @@ def show_images(images):
         print(frame)
         cv2.destroyAllWindows()
         cv2.waitKey()
-        binary_im = Localization.plate_detection(frame)
-        cv2.imshow('Binary image', binary_im)
+        images = Localization.plate_detection(frame)
+        for image in images:
+            cv2.imshow('Binary image', image)
         cv2.waitKey()
         cv2.destroyAllWindows()
 
 ## example for how to use the functions
-#arr = CaptureFrame_Process('trainingsvideo.avi', 0.2, 'abc')
-#show_images(arr)
+arr = CaptureFrame_Process('trainingsvideo.avi', 0.2, 'abc')
+show_images(arr)

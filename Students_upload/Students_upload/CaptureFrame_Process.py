@@ -65,5 +65,5 @@ def show_images(images):
 
 
 ## example for how to use the functions
-arr = CaptureFrame_Process('trainingsvideo.avi', 0.2, 'abc')
+arr = CaptureFrame_Process('trainingsvideo.avi', 1.0, 'abc')
 show_images(arr)

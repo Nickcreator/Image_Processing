@@ -77,7 +77,7 @@ def get_licence_plate(image):
             #print(im_hsv[i,j,0])
             if (im_hsv_plate[i, j, 0] > 34 or im_hsv_plate[i,j,0] < 1 or im_hsv_plate[i,j,1] < 60 or im_hsv_plate[i,j,2] < 50):
                 im_hsv_plate[i, j, 2] = 0
-            if (im_hsv_letters[i, j, 0] > 36 or im_hsv_letters[i, j, 0] < 0 or im_hsv_letters[i, j, 1] < 20 or im_hsv_letters[i, j, 2] < 20):
+            if (im_hsv_letters[i, j, 0] > 34 or im_hsv_letters[i, j, 0] < 0 or im_hsv_letters[i, j, 1] < 60 or im_hsv_letters[i, j, 2] < 40):
                 im_hsv_letters[i, j, 2] = 0
             if im_hsv_plate[i,j,2] > max_color:
                 max_color = im_hsv_plate[i,j,2]
@@ -109,12 +109,10 @@ def transform_points(im, approx, targets):
             curdist4 = dist4
             point4 = a
     pts1 = np.float32([point1, point2, point3, point4])
-    pts2 = np.float32([[40, 40], [552, 40], [40, 150], [552, 150]])
-    pts3 = np.float32([point1, point2, point3])
-    pts4 = np.float32([[40, 40], [552, 40], [40, 150]])
+    pts2 = np.float32([[0, 0], [512, 0], [0, 110], [512, 110]])
 
     matrix3D = cv2.getPerspectiveTransform(pts1, pts2)
-    result3D = cv2.warpPerspective(im, matrix3D, (592, 190))
+    result3D = cv2.warpPerspective(im, matrix3D, (512, 110))
     return result3D
 
 def calc_distance(pt1, pt2):
@@ -171,7 +169,7 @@ def line_detection(im_gray, im_letters, im_plate, loops):
                     im_arr_plate.append(result3D_plate)
                     cv2.imshow('Transform3D', result3D)
 
-            if (len(approx) == 5):
+            if (False):
                 approx = cv2.approxPolyDP(cnt, 0.025 * cv2.arcLength(cnt, True), True)
                 x, y, w, h = cv2.boundingRect(approx)
                 if w >= h:
@@ -209,11 +207,11 @@ def plate_detection(im):
     kernel = np.ones((5, 5))
     car_binary_rect = cv2.erode(car_binary[1], kernel, iterations=2)
     im_canny = cv2.Canny(car_binary_rect, 180, 255)
-    im_dil = cv2.dilate(im_canny, kernel, iterations=3)
-    im_er = cv2.erode(im_dil, kernel, iterations = 3)
-    im_dil1 = cv2.dilate(im_er, kernel, iterations=3)
-    im_er1 = cv2.erode(im_dil1, kernel, iterations = 3)
-    im_dil2 = cv2.dilate(im_er1, kernel, iterations=1)
+    #im_dil = cv2.dilate(im_canny, kernel, iterations=3)
+    #im_er = cv2.erode(im_dil, kernel, iterations = 3)
+    #im_dil1 = cv2.dilate(im_er, kernel, iterations=3)
+    #im_er1 = cv2.erode(im_dil1, kernel, iterations =3)
+    im_dil2 = cv2.dilate(im_canny, kernel, iterations=1)
     loops = 3
 
     rect_detect, plate_detect = line_detection(im_dil2, im_letters, im_plate, loops)
@@ -229,6 +227,7 @@ def plate_detection(im):
             if 100 * zeros/len(ravel_img) < 85:
                 name0 = "gray_plate_" + str(i)
                 cv2.imshow(name0, image_gray_plate)
+                cv2.imshow(name0 + 'letters', image_gray)
                 ravel_img = ravel_img[ravel_img != 0]
                 #plt.hist(image_gray.ravel(),256,[1,256]); plt.show()
                 thres = np.median(ravel_img) - 20
@@ -236,9 +235,9 @@ def plate_detection(im):
                 print(thresname, thres)
                 bin_plate_low = cv2.threshold(image_gray, thres, 255, cv2.THRESH_BINARY_INV)
                 bin_plates.append(bin_plate_low[1])
-                name1 = "bin_plate_low" + str(i)
+                name1 = "bin_plate_thres_" + str(i)
                 cv2.imshow(name1, bin_plate_low[1])
-    im_stack = stack_images(0.5, ([im, im_dil, im_dil2],
+    im_stack = stack_images(0.5, ([im, im_canny, im_dil2],
                                     [im_plate, im_letters, car_binary_rect]))
     cv2.imshow('Result', im_stack)
     cv2.waitKey()

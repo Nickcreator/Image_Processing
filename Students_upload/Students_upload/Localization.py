@@ -69,18 +69,22 @@ def gray_stretch(img):
     return img
 
 def get_licence_plate(image):
-    im_hsv = cv2.cvtColor(image, cv2.COLOR_RGB2HSV)
+    im_hsv_plate = cv2.cvtColor(image, cv2.COLOR_RGB2HSV)
+    im_hsv_letters = cv2.cvtColor(image, cv2.COLOR_RGB2HSV)
     max_color = 0
-    for i in range(0, len(im_hsv)):
-        for j in range(0, len(im_hsv[i])):
+    for i in range(0, len(im_hsv_plate)):
+        for j in range(0, len(im_hsv_plate[i])):
             #print(im_hsv[i,j,0])
-            if (im_hsv[i, j, 0] > 37 or im_hsv[i,j,0] < 1 or im_hsv[i,j,1] < 27 or im_hsv[i,j,2] < 20):
-                im_hsv[i, j, 2] = 0
-            if im_hsv[i,j,2] > max_color:
-                max_color = im_hsv[i,j,2]
+            if (im_hsv_plate[i, j, 0] > 34 or im_hsv_plate[i,j,0] < 1 or im_hsv_plate[i,j,1] < 60 or im_hsv_plate[i,j,2] < 50):
+                im_hsv_plate[i, j, 2] = 0
+            if (im_hsv_letters[i, j, 0] > 36 or im_hsv_letters[i, j, 0] < 0 or im_hsv_letters[i, j, 1] < 20 or im_hsv_letters[i, j, 2] < 20):
+                im_hsv_letters[i, j, 2] = 0
+            if im_hsv_plate[i,j,2] > max_color:
+                max_color = im_hsv_plate[i,j,2]
                 #print("new ", im_hsv[i, j, 2])
-    im2 = cv2.cvtColor(im_hsv, cv2.COLOR_HSV2BGR)
-    return im2, max_color
+    im_bgr_plate = cv2.cvtColor(im_hsv_plate, cv2.COLOR_HSV2BGR)
+    im_bgr_letters = cv2.cvtColor(im_hsv_letters, cv2.COLOR_HSV2BGR)
+    return im_bgr_plate, im_bgr_letters, max_color
 
 def transform_points(im, approx, targets):
     curdist1 = 9999999
@@ -105,58 +109,78 @@ def transform_points(im, approx, targets):
             curdist4 = dist4
             point4 = a
     pts1 = np.float32([point1, point2, point3, point4])
-    pts2 = np.float32([[0, 0], [512, 0], [0, 110], [532, 110]])
-    matrix = cv2.getPerspectiveTransform(pts1, pts2)
-    result = cv2.warpPerspective(im, matrix, (512, 110))
-    return result
+    pts2 = np.float32([[40, 40], [552, 40], [40, 150], [552, 150]])
+    pts3 = np.float32([point1, point2, point3])
+    pts4 = np.float32([[40, 40], [552, 40], [40, 150]])
+
+    matrix3D = cv2.getPerspectiveTransform(pts1, pts2)
+    result3D = cv2.warpPerspective(im, matrix3D, (592, 190))
+    return result3D
 
 def calc_distance(pt1, pt2):
     dist = np.sqrt((pt1[0] - pt2[0][0])**2 + (pt1[1] - pt2[0][1])**2)
     return dist
 
-def line_detection(im_gray, im):
-    new_im = np.copy(im)
+def line_detection(im_gray, im_letters, im_plate, loops):
+    trans_gray = np.copy(im_gray)
+    new_im_letters = np.copy(im_letters)
+    new_im_plate =np.copy(im_plate)
+    green_im = np.copy(im_plate)
     # Apply edge detection method on the image
     contours1, _ = cv2.findContours(im_gray, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
     contours = contours1
     print("len contours: ", len(contours))
     licence_pic = np.zeros(0)
-    im_arr = []
+    im_arr_letters = []
+    im_arr_plate = []
 
     for cnt in contours:
-        if (cv2.contourArea(cnt) > 800):
+        if (cv2.contourArea(cnt) > 1000):
             approx = cv2.approxPolyDP(cnt, 0.025 * cv2.arcLength(cnt, True), True)
             print("shape: ", len(approx))
-            cv2.drawContours(new_im, [approx], 0, (0, 255, 0), 2)
+            cv2.drawContours(green_im, [approx], 0, (0, 255, 0), 2)
             #cv2.drawContours(im_gray, [approx], 0, (0, 255, 0), 2)
             licence_pic = np.array([[0, 0], [1, 0]])
             if (len(approx) == 4):
                 print("approx", approx)
                 x, y, w, h = cv2.boundingRect(approx)
                 #cv2.rectangle(new_im, (x, y), (w + x, h + y), (225, 0, 0), 2)
-                print("rectangle: ", x, y, w, h)
-                licence_pic = new_im[np.maximum(y-15, 0):y+h+15, np.maximum(x-15, 0):x+w+15]
-                print(licence_pic)
-                cv2.imshow('Licence pic', licence_pic)
-                #gray_image = cv2.COLOR_RGB2GRAY(licence_pic)
-                targets = []
-                targets.append([x,y])
-                targets.append([x+w, y])
-                targets.append([x, y+h])
-                targets.append([x+w, y+h])
-                print("targets: ", targets)
-                #gray_licence_pic = cv2.COLOR_RGB2GRAY(licence_pic)
-                result = transform_points(new_im, approx, targets)
-                im_arr.append(result)
-                im_arr.append(licence_pic)
-                cv2.imshow('Transform', result)
+                print("rectangle: x, y, w, h: ", x, y, w, h)
+                if w > h:
+                    licence_pic = new_im_letters[np.maximum(y-15, 0):y+h+15, np.maximum(x-15, 0):x+w+15]
+                    cv2.imshow('Licence pic', licence_pic)
+                    cv2.imshow('Detect green', green_im)
+                    #gray_image = cv2.COLOR_RGB2GRAY(licence_pic)
+                    targets = []
+                    targets.append([x,y])
+                    targets.append([x+w, y])
+                    targets.append([x, y+h])
+                    targets.append([x+w, y+h])
+                    print("targets: ", targets)
+                    #gray_licence_pic = cv2.COLOR_RGB2GRAY(licence_pic)
+                    result3D = transform_points(new_im_letters, approx, targets)
+                    result3D_plate = transform_points(new_im_plate, approx, targets)
+                    #if loops > 0:
+                    #    result_bw = transform_points(trans_gray, approx, targets)
+                    #    results = line_detection(result_bw, result, loops - 1)
+                    #    im_arr.append(results)
+                    #else:
+                    im_arr_letters.append(result3D)
+                    im_arr_letters.append(licence_pic)
+                    im_arr_plate.append(result3D_plate)
+                    im_arr_plate.append(result3D_plate)
+                    cv2.imshow('Transform3D', result3D)
+
             if (len(approx) == 5):
                 approx = cv2.approxPolyDP(cnt, 0.025 * cv2.arcLength(cnt, True), True)
                 x, y, w, h = cv2.boundingRect(approx)
-                licence_pic = new_im[y - 15:y + h + 15, x - 15:x + w + 15]
-                im_arr.append(licence_pic)
+                if w >= h:
+                    licence_pic = new_im_letters[np.maximum(y-15, 0):y+h+15, np.maximum(x-15, 0):x+w+15]
+                    licence_pic_plate = new_im_plate[np.maximum(y-15, 0):y+h+15, np.maximum(x-15, 0):x+w+15]
+                    im_arr_letters.append(licence_pic)
+                    im_arr_plate.append(licence_pic_plate)
     # This returns an array of r and theta values
-    return im_arr
+    return im_arr_letters, im_arr_plate
 
 def interest_detection(im_gray, im):
     # Apply edge detection method on the image
@@ -173,16 +197,16 @@ def interest_detection(im_gray, im):
 
 def plate_detection(im):
     bgr_im = cv2.cvtColor(im, cv2.COLOR_BGR2RGB)
-    im2, max_color = get_licence_plate(bgr_im)
+    im_plate, im_letters, max_color = get_licence_plate(bgr_im)
     print(max_color)
-    im_blur = cv2.GaussianBlur(im2, (9,9), 1)
+    im_blur = cv2.GaussianBlur(im_plate, (9,9), 1)
     im_gray = cv2.cvtColor(im_blur, cv2.COLOR_BGR2GRAY)
     gray_stretch(im_gray)
     #im_gray = cv2.erode(im_gray, np.ones((5, 5), np.uint8), iterations=1)
     #im_gray = cv2.dilate(im_gray, np.ones((5, 5), np.uint8), iterations=1)
-
+    cv2.imshow("gray image", im_gray)
     car_binary = cv2.threshold(im_gray, 70, 255, cv2.THRESH_BINARY_INV)
-    kernel = np.ones((3, 3))
+    kernel = np.ones((5, 5))
     car_binary_rect = cv2.erode(car_binary[1], kernel, iterations=2)
     im_canny = cv2.Canny(car_binary_rect, 180, 255)
     im_dil = cv2.dilate(im_canny, kernel, iterations=3)
@@ -190,22 +214,32 @@ def plate_detection(im):
     im_dil1 = cv2.dilate(im_er, kernel, iterations=3)
     im_er1 = cv2.erode(im_dil1, kernel, iterations = 3)
     im_dil2 = cv2.dilate(im_er1, kernel, iterations=1)
+    loops = 3
 
-    rect_detect = line_detection(im_dil2, im2)
+    rect_detect, plate_detect = line_detection(im_dil2, im_letters, im_plate, loops)
     bin_plates = []
     print('Number of licence plates:', len(rect_detect))
-    for i, image in enumerate(rect_detect):
-        image_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        bin_plate_low = cv2.threshold(image_gray, 80, 255, cv2.THRESH_BINARY_INV)
-        bin_plate_high = cv2.threshold(image_gray, 120, 255, cv2.THRESH_BINARY_INV)
-        bin_plates.append(bin_plate_low[1])
-        bin_plates.append(bin_plate_high[1])
-        name1 = "bin_plate_high" + str(i)
-        name2 = "bin_plate_low" + str(i)
-        cv2.imshow(name1, bin_plate_low[1])
-        cv2.imshow(name2, bin_plate_high[1])
+    if len(rect_detect) > 0:
+        for i, image in enumerate(rect_detect):
+            image_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+            image_gray_plate = cv2.cvtColor(plate_detect[i], cv2.COLOR_BGR2GRAY)
+            ravel_img = image_gray_plate.ravel()
+            zeros = np.count_nonzero(image_gray_plate == 0)
+            print("length: ", zeros/len(ravel_img))
+            if 100 * zeros/len(ravel_img) < 85:
+                name0 = "gray_plate_" + str(i)
+                cv2.imshow(name0, image_gray_plate)
+                ravel_img = ravel_img[ravel_img != 0]
+                #plt.hist(image_gray.ravel(),256,[1,256]); plt.show()
+                thres = np.median(ravel_img) - 20
+                thresname = 'Threshold_' + str(i)
+                print(thresname, thres)
+                bin_plate_low = cv2.threshold(image_gray, thres, 255, cv2.THRESH_BINARY_INV)
+                bin_plates.append(bin_plate_low[1])
+                name1 = "bin_plate_low" + str(i)
+                cv2.imshow(name1, bin_plate_low[1])
     im_stack = stack_images(0.5, ([im, im_dil, im_dil2],
-                                    [im_gray, im2, car_binary_rect]))
+                                    [im_plate, im_letters, car_binary_rect]))
     cv2.imshow('Result', im_stack)
     cv2.waitKey()
     cv2.destroyAllWindows()

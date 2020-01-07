@@ -32,6 +32,8 @@ def recognize(img):
 
 # Scales the image to the black areas
 def scaleToData(img, emptyColor):
+	startCol = 0
+	startRow = 0
 	(height, width) = np.shape(img)
 	emptyCol = np.array([emptyColor]*height)
 	transpose = img.T
@@ -152,10 +154,10 @@ def getDifference(img, template):
 
 
 # TO RUN CODE
-img = cv2.imread('nl_gl-395-x_template.jpg', 1)
-plates = local.plate_detection(img)
-for plate in plates:
-	recognize(plate)
+img = cv2.imread('Nummerbord.jpg', 1)
+#plates = local.plate_detection(img)
+#for plate in plates:
+	#recognize(plate)
 
 
 

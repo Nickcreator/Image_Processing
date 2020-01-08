@@ -1,5 +1,6 @@
 import cv2
 import numpy as np
+import collections
 import os
 import pandas as pd
 from Students_upload.Students_upload import Localization
@@ -51,17 +52,33 @@ def CaptureFrame_Process(file_path, sample_frequency, save_path):
 
 
 def show_images(images):
+    answers = []
     for i in images:
         (frameNr, timeStamp, frame) = i
         cv2.imshow('Frame number: %s, TimeStamp: %s' % (frameNr, timeStamp ), frame / 256)
         print(frame)
         cv2.destroyAllWindows()
         cv2.waitKey()
-        images = Localization.plate_detection(frame)
-        for i, image in enumerate(images):
-            name = "image_" + str(i)
-            cv2.imshow(name, image)
-            #Recognize.recognize(image)
+        frame_images = Localization.plate_detection(frame)
+        if False:
+            frame_array = np.arange(len(frame_images) * 6).reshape(6, len(frame_images))
+            print('frame array', frame_array)
+            frame_strings = []
+            for j, image in enumerate(frame_images):
+                name = "image_" + str(i)
+                cv2.imshow(name, image)
+                plate_string = Recognize.recognize(image)
+                if not plate_string == 'A':
+                    frame_strings.append(plate_string)
+            text_array = np.arange(len(frame_strings) * 6).reshape(6, len(frame_strings))
+            for j in range(0, frame_images):
+                for k in range(0, len(plate_string)):
+                    text_array[j, k] = plate_string[k]
+            print(text_array)
+            counter = collections.Counter(text_array[0])
+            answer = counter[0]
+            answers.append(answer)
+
 
 
 ## example for how to use the functions

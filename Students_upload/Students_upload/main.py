@@ -1,6 +1,8 @@
 import argparse
 import os
-import CaptureFrame_Process
+from Students_upload.Students_upload import Localization
+from Students_upload.Students_upload import Recognize
+from Students_upload.Students_upload import CaptureFrame_Process
 
 # define the required arguments: video path(file_path), sample frequency(second), saving path for final result table
 # for more information of 'argparse' module, see https://docs.python.org/3/library/argparse.html

@@ -1,5 +1,6 @@
 import cv2
 import numpy as np
+import math
 import matplotlib.pyplot as plt
 import tkinter
 import PIL.Image, PIL.ImageTk
@@ -86,7 +87,7 @@ def get_licence_plate(image):
     im_bgr_letters = cv2.cvtColor(im_hsv_letters, cv2.COLOR_HSV2BGR)
     return im_bgr_plate, im_bgr_letters, max_color
 
-def transform_points(im, approx, targets):
+def order_points(approx, targets):
     curdist1 = 9999999
     curdist2 = 9999999
     curdist3 = 9999999
@@ -109,11 +110,7 @@ def transform_points(im, approx, targets):
             curdist4 = dist4
             point4 = a
     pts1 = np.float32([point1, point2, point3, point4])
-    pts2 = np.float32([[0, 0], [512, 0], [0, 110], [512, 110]])
-
-    matrix3D = cv2.getPerspectiveTransform(pts1, pts2)
-    result3D = cv2.warpPerspective(im, matrix3D, (512, 110))
-    return result3D
+    return pts1
 
 def calc_distance(pt1, pt2):
     dist = np.sqrt((pt1[0] - pt2[0][0])**2 + (pt1[1] - pt2[0][1])**2)
@@ -138,14 +135,19 @@ def line_detection(im_gray, im_letters, im_plate, loops):
             print("shape: ", len(approx))
             cv2.drawContours(green_im, [approx], 0, (0, 255, 0), 2)
             #cv2.drawContours(im_gray, [approx], 0, (0, 255, 0), 2)
-            licence_pic = np.array([[0, 0], [1, 0]])
+            #licence_pic = np.array([[0, 0], [1, 0]])
             if (len(approx) == 4):
                 print("approx", approx)
+                rect = cv2.minAreaRect(approx)
+                box = cv2.boxPoints(rect)
+                print("box", box)
                 x, y, w, h = cv2.boundingRect(approx)
-                #cv2.rectangle(new_im, (x, y), (w + x, h + y), (225, 0, 0), 2)
+                xa, ya, wa, ha = cv2.boundingRect(box)
+                cv2.rectangle(green_im, (x, y), (w + x, h + y), (225, 0, 0), 2)
+                #cv2.rectangle(green_im, (x, y), (w + x, h + y), (0, 255, 255), 2)
                 print("rectangle: x, y, w, h: ", x, y, w, h)
                 if w > h:
-                    licence_pic = new_im_letters[np.maximum(y-15, 0):y+h+15, np.maximum(x-15, 0):x+w+15]
+                    licence_pic = new_im_letters[np.maximum(ya-10, 0):ya+ha+10, np.maximum(xa-10, 0):xa+wa+10]
                     cv2.imshow('Licence pic', licence_pic)
                     cv2.imshow('Detect green', green_im)
                     #gray_image = cv2.COLOR_RGB2GRAY(licence_pic)
@@ -156,18 +158,26 @@ def line_detection(im_gray, im_letters, im_plate, loops):
                     targets.append([x+w, y+h])
                     print("targets: ", targets)
                     #gray_licence_pic = cv2.COLOR_RGB2GRAY(licence_pic)
-                    result3D = transform_points(new_im_letters, approx, targets)
-                    result3D_plate = transform_points(new_im_plate, approx, targets)
+                    pts1 = order_points(approx, targets)
+                    pts2 = np.float32([[0, 0], [512, 0], [0, 110], [512, 110]])
+                    matrix3D = cv2.getPerspectiveTransform(pts1, pts2)
+                    result3D_plate = cv2.warpPerspective(new_im_plate, matrix3D, (512, 110))
+                    result3D_letters = cv2.warpPerspective(new_im_letters, matrix3D, (512, 110))
+                    print('pts1', pts1)
+                    print('pts1[0]', pts1[0])
+                    print('pts1[0][0][0]', pts1[0][0][0])
+                    myradians = math.atan2(pts1[3][0][1] - pts1[2][0][1], pts1[3][0][0] - pts1[2][0][0])
+                    print(myradians)
                     #if loops > 0:
                     #    result_bw = transform_points(trans_gray, approx, targets)
                     #    results = line_detection(result_bw, result, loops - 1)
                     #    im_arr.append(results)
                     #else:
-                    im_arr_letters.append(result3D)
+                    im_arr_letters.append(result3D_plate)
                     im_arr_letters.append(licence_pic)
                     im_arr_plate.append(result3D_plate)
-                    im_arr_plate.append(result3D_plate)
-                    cv2.imshow('Transform3D', result3D)
+                    im_arr_plate.append(result3D_letters)
+                    cv2.imshow('Transform3D', result3D_plate)
 
             if (False):
                 approx = cv2.approxPolyDP(cnt, 0.025 * cv2.arcLength(cnt, True), True)
@@ -224,7 +234,7 @@ def plate_detection(im):
             ravel_img = image_gray_plate.ravel()
             zeros = np.count_nonzero(image_gray_plate == 0)
             print("length: ", zeros/len(ravel_img))
-            if 100 * zeros/len(ravel_img) < 85:
+            if 100 * zeros/len(ravel_img) < 75:
                 name0 = "gray_plate_" + str(i)
                 cv2.imshow(name0, image_gray_plate)
                 cv2.imshow(name0 + 'letters', image_gray)

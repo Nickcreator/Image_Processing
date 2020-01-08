@@ -116,6 +116,31 @@ def calc_distance(pt1, pt2):
     dist = np.sqrt((pt1[0] - pt2[0][0])**2 + (pt1[1] - pt2[0][1])**2)
     return dist
 
+
+def rotate_bound(image, angle):
+    # grab the dimensions of the image and then determine the
+    # center
+    (h, w) = image.shape[:2]
+    (cX, cY) = (w // 2, h // 2)
+
+    # grab the rotation matrix (applying the negative of the
+    # angle to rotate clockwise), then grab the sine and cosine
+    # (i.e., the rotation components of the matrix)
+    M = cv2.getRotationMatrix2D((cX, cY), -angle, 1.0)
+    cos = np.abs(M[0, 0])
+    sin = np.abs(M[0, 1])
+
+    # compute the new bounding dimensions of the image
+    nW = int((h * sin) + (w * cos))
+    nH = int((h * cos) + (w * sin))
+
+    # adjust the rotation matrix to take into account translation
+    M[0, 2] += (nW / 2) - cX
+    M[1, 2] += (nH / 2) - cY
+
+    # perform the actual rotation and return the image
+    return cv2.warpAffine(image, M, (nW, nH))
+
 def line_detection(im_gray, im_letters, im_plate, loops):
     trans_gray = np.copy(im_gray)
     new_im_letters = np.copy(im_letters)
@@ -168,11 +193,16 @@ def line_detection(im_gray, im_letters, im_plate, loops):
                     print('pts1[0][0][0]', pts1[0][0][0])
                     myradians = math.atan2(pts1[3][0][1] - pts1[2][0][1], pts1[3][0][0] - pts1[2][0][0])
                     print(myradians)
+                    rotated_im = rotate_bound(licence_pic, myradians)
+                    #M = cv2.getRotationMatrix2D(licence_pic, myradians, 1.0)
+                    #cv2.warpAffine(licence_pic, M, )
+                    cv2.imshow('Rotated im', rotated_im)
                     #if loops > 0:
                     #    result_bw = transform_points(trans_gray, approx, targets)
                     #    results = line_detection(result_bw, result, loops - 1)
                     #    im_arr.append(results)
                     #else:
+
                     im_arr_letters.append(result3D_plate)
                     im_arr_letters.append(licence_pic)
                     im_arr_plate.append(result3D_plate)

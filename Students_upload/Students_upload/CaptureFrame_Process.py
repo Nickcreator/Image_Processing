@@ -1,10 +1,9 @@
 import cv2
 import numpy as np
-import collections
-import os
-import pandas as pd
-from Students_upload.Students_upload import Localization
-from Students_upload.Students_upload import Recognize
+from Students_upload.Students_upload import Recognize as rec
+from Students_upload.Students_upload import Localization as local
+import time
+# from Students_upload.Students_upload import Recognize
 import matplotlib as plt
 
 """
@@ -23,6 +22,13 @@ Output: None
 
 
 def CaptureFrame_Process(file_path, sample_frequency, save_path):
+    start = time.time()
+    images = capture(file_path, sample_frequency)
+    print('time to capture: ' + str(time.time() - start))
+    recAndSave(images, save_path)
+
+
+def capture(file_path, sample_frequency):
     vidcap = cv2.VideoCapture(file_path)
 
     # extracting meta information about the video
@@ -43,7 +49,7 @@ def CaptureFrame_Process(file_path, sample_frequency, save_path):
     # inserting images
     counter = 0
     for i in np.arange(int(lenNew)):
-        for j in np.arange(int(fps / sample_frequency) - 1):  #skip the next (fps/sampling_frequency) - 1 frames
+        for j in np.arange(int(fps / sample_frequency) - 1):  # skip the next (fps/sampling_frequency) - 1 frames
             counter = counter + 1
             ret, frame = vidcap.read()
         images[i] = (counter, counter / fps, frame)
@@ -51,36 +57,39 @@ def CaptureFrame_Process(file_path, sample_frequency, save_path):
     return images
 
 
+def recAndSave(images, save_path):
+    data = []
+    for image in images:
+        (frameNr, timeStamp, frame) = image
+        localised = local.plate_detection(frame)
+        for locals in localised:
+            result = rec.recognize(locals)
+            if result is None:
+                continue
+            data.append([result, frameNr, timeStamp])
+    import csv
+    myFile = open(save_path, 'w')
+    with myFile:
+        writer = csv.writer(myFile)
+        writer.writerows(data)
+
+
 def show_images(images):
-    answers = []
     for i in images:
         (frameNr, timeStamp, frame) = i
-        cv2.imshow('Frame number: %s, TimeStamp: %s' % (frameNr, timeStamp ), frame / 256)
-        print(frame)
+        cv2.imshow('Frame number: %s, TimeStamp: %s' % (frameNr, timeStamp), frame / 256)
+        #print(frame)
         cv2.destroyAllWindows()
         cv2.waitKey()
-        frame_images = Localization.plate_detection(frame)
-        if False:
-            frame_array = np.arange(len(frame_images) * 6).reshape(6, len(frame_images))
-            print('frame array', frame_array)
-            frame_strings = []
-            for j, image in enumerate(frame_images):
-                name = "image_" + str(i)
-                cv2.imshow(name, image)
-                plate_string = Recognize.recognize(image)
-                if not plate_string == 'A':
-                    frame_strings.append(plate_string)
-            text_array = np.arange(len(frame_strings) * 6).reshape(6, len(frame_strings))
-            for j in range(0, frame_images):
-                for k in range(0, len(plate_string)):
-                    text_array[j, k] = plate_string[k]
-            print(text_array)
-            counter = collections.Counter(text_array[0])
-            answer = counter[0]
-            answers.append(answer)
-
+        images = local.plate_detection(frame)
+        for i, image in enumerate(images):
+            name = "image_" + str(i)
+            cv2.imshow(name, image)
+            # Recognize.recognize(image)
 
 
 ## example for how to use the functions
-arr = CaptureFrame_Process('trainingsvideo.avi', 1.0, 'abc')
-show_images(arr)
+start = time.time()
+CaptureFrame_Process('trainingsvideo.avi', 1, 'helloThisIsATest.csv')
+end = time.time()
+print('time: ',  end - start)

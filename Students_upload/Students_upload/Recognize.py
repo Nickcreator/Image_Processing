@@ -1,11 +1,7 @@
 import cv2
 import numpy as np
 import time
-
-from sqlalchemy.ext.declarative import declared_attr
-
 import Students_upload.Students_upload.Localization as local
-import Students_upload.Students_upload.CaptureFrame_Process as cap
 
 """
 In this file, you will define your own segment_and_recognize function.
@@ -31,52 +27,17 @@ def recognize(img):
 	string = read(letters)
 
 	end = time.time()
-	print('time: ',  end - start)
+	#print('time: ',  end - start)
 	return string
 
 
 # Scales the image to the black areas
-def scaleToData(img, emptyColor):
-	startCol = 0
-	endCol = 0
-	startRow = 0
-	endRow = 0
-
-	(height, width) = np.shape(img)
-	emptyCol = np.array([emptyColor]*height)
-	transpose = img.T
-	for i in np.arange(width - 1):
-		if not np.array_equal(transpose[i], emptyCol):
-			startCol = i
-			break
-	for i in np.arange(width):
-		if not (np.array_equal(transpose[width - i - 1], emptyCol)):
-			endCol = width - i - 1
-			break
-
-	transposeNew = np.split(transpose, [startCol, endCol])[1]
-	img = transposeNew.T
-
-	emptyRow = np.array([emptyColor] * (endCol - startCol))
-	for i in np.arange(height - 1):
-		if not np.array_equal(img[i], emptyRow):
-			startRow = i
-			break
-	for i in np.arange(height):
-		if not (np.array_equal(img[height - i - 1], emptyRow)):
-			endRow = height - i - 1
-			break
-	imgNew = np.split(transposeNew.T, [startRow, endRow])[1]
-	return imgNew
 
 def segment(img):
-	#cv2.imshow("after dilating", img)
-	#cv2.waitKey()
-	#cv2.destroyAllWindows()
-	#img = cv2.dilate(img, np.ones((5, 5), np.uint8), iterations=1)
-	#img = cv2.erode(img, np.ones((5, 5), np.uint8), iterations=1)
-	h, w = img.shape[:2]
-	mask = np.zeros((h + 2, w + 2), np.uint8)
+	img = cv2.dilate(img, np.ones((2, 2), np.uint8), iterations=1)
+	img = cv2.erode(img, np.ones((2, 2), np.uint8), iterations=1)
+	#h, w = img.shape[:2]
+	#mask = np.zeros((h + 2, w + 2), np.uint8)
 	#cv2.floodFill(img, mask, (0,0), 0)
 	#cv2.floodFill(img, mask, (0,h-1), 0)
 	#cv2.floodFill(img, mask, (w-1,0), 0)
@@ -88,37 +49,43 @@ def segment(img):
 	#cv2.destroyAllWindows()
 
 	N, regions, stats, centroids = cv2.connectedComponentsWithStats(img)
+	if N<6:
+		return
 	img = np.array(img)
 	letters = []
-	centers = []
-	areas = []
 	for i in np.arange(N):
 		(xStart, yStart, width, height, area) = stats[i]
-		letter = img[yStart:(yStart + height), xStart:(xStart + width)]
-		if 1.5 > width/height > 0.3 :
+		#letter = img[yStart:(yStart + height), xStart:(xStart + width)]
+		if 1.5 > width/height > 0.3 and area > 50:
 			letter = img[yStart:(yStart + height), xStart:(xStart + width)]
-			letterList.append((letter, area, centroids[i][0] - centroids[i - 1][0], centroids[i][0]))
-			#letterList.append((letter, area, centroids[i][0] - centroids[i-1][0], centroids[i][0]))
-			#print(centroids[i][0] - centroids[i-1][0])
-		elif np.average(letter.ravel()) > 200:
-			letterList.append((None, area, None, centroids[i][0]))
+			letterList.append([letter, area, (xStart, xStart + width), centroids[i][0], 0])
 
+			#print(centroids[i][0] - centroids[i-1][0])
+		#elif np.average(letter.ravel()) > 200:
+		#	letterList.append((None, area, None, centroids[i][0]))
+
+	if len(letterList) < 6:
+		return
 	letterList.sort(key=lambda letter: -letter[1])
-	letterList = letterList[0:8]
+	letterList = letterList[0:6]
 	letterList.sort(key=lambda letter: letter[3])
 
-	#meanList = []
-	#for i in np.arange(len(letterList)):
-	#	meanList.append(letterList[i][2])
-	#	np.sort(meanList)
-	#meanListSorted = np.sort(meanList)
-	#thresh = meanListSorted[5]*0.9
-	#letters = []
-	for i in np.arange(len(letterList)):
-		if letterList[i][0] is None:
-			letters.append(None)
-		else:
-			letters.append(letterList[i][0])
+	for i in range(1, len(letterList)):
+		(startLast, endLast) = letterList[i - 1][2]
+		(start, end) = letterList[i][2]
+		letterList[i][4] = start - endLast
+
+	letters = []
+	for i in range(len(letterList)):
+		letters.append(letterList[i][0])
+
+	meanList = []
+	for i in range(1, len(letterList)):
+		meanList.append((i, letterList[i][4]))
+	meanList.sort(key=lambda key: key[1])
+	letters.insert(max(meanList[-1][0], meanList[-2][0]), None)
+	letters.insert(min(meanList[-1][0], meanList[-2][0]), None)
+
 	return letters
 
 # Segments into seperate letter
@@ -175,9 +142,10 @@ def imageUntilColumn(img, height, rowStart, rowEnd):
 # Read the letters
 def read(letters):
 
-
+	if letters is None:
+		return
 	result = []
-	characters = np.array(['-', 'B', 'D', 'F', 'D', 'G', 'H', 'J', 'K', 'L', 'M', 'N', 'P', 'R', 'S', 'T', 'V', 'X', 'Z'])
+	characters = np.array(['-', 'B', 'D', 'F', 'G', 'H', 'J', 'K', 'L', 'M', 'N', 'P', 'R', 'S', 'T', 'V', 'X', 'Z'])
 	for img in letters:
 		if img is None:
 			result.append('-')
@@ -197,7 +165,14 @@ def read(letters):
 		img = cv2.warpAffine(img, rot, (rows, cols))
 		cv2.imshow('after rotating', img)
 		cv2.waitKey()'''
+		template = cv2.imread(f"SameSizeLetters/1.bmp", 0)
+		(imgHeight, imgWidth) = img.shape
+		(temHeight, temWidth) = template.shape
 
+		factor = temHeight / imgHeight
+		imgHeight = int(imgHeight * factor)
+		imgWidth = int(imgWidth * factor)
+		img = cv2.resize(img, (imgWidth, imgHeight))
 
 		minDifferenceL = (0, None)
 		# Check letters
@@ -220,20 +195,24 @@ def read(letters):
 				minDifferenceN = (difference, i)
 
 		if minDifferenceL[0] > minDifferenceN[0]:
+			#cv2.imshow('letter', img)
+			#cv2.waitKey()
+			#cv2.destroyAllWindows()
 			if minDifferenceL[1] == 1: ######## it's a D
-				(height, width) = img.shape
-				imgSlice = img[:,[int(width/2)]]
+
+				'''(height, width) = img.shape
+				imgSlice = img[:,[int(width/4)]]
 				N, regions, stats, centroids  = cv2.connectedComponentsWithStats(imgSlice)
 				if N > 3:
 					character = 'B'
-				else:
-					character = 'D'
+				else:'''
+				character = 'D'
 			else:
-				character = characters[minDifferenceL[1] + 1]
+				character = characters[minDifferenceL[1]]
 			result.append(character)
 		else:
 			result.append(minDifferenceN[1])
-	string = ''.join(" ".join(str(x) for x in result))
+	string = ''.join("".join(str(x) for x in result))
 	print('result: ', string)
 	return string
 
@@ -243,10 +222,10 @@ def getDifference(img, template):
 	(imgHeight, imgWidth) = img.shape
 	(temHeight, temWidth) = template.shape
 
-	factor = temHeight/imgHeight
-	imgHeight = int(imgHeight * factor)
-	imgWidth = int(imgWidth * factor)
-	img = cv2.resize(img, (imgWidth, imgHeight))
+	#factor = temHeight/imgHeight
+	#imgHeight = int(imgHeight * factor)
+	#imgWidth = int(imgWidth * factor)
+	#img = cv2.resize(img, (imgWidth, imgHeight))
 
 	#cv2.imshow('template', template)
 	#cv2.imshow('letter', img)
@@ -271,16 +250,16 @@ def getDifference(img, template):
 	return similarity
 
 
-img = cv2.imread('nl_gl-395-x_template.jpg', 1)
-(a, b, img) = cap.CaptureFrame_Process("trainingsvideo.avi", 1, '')[12]
+#img = cv2.imread('nl_gl-395-x_template.jpg', 1)
+#(a, b, img) = cap.CaptureFrame_Process("trainingsvideo.avi", 1, '')[7]
 #cv2.imshow('Hello', img)
 #cv2.waitKey()
-plates = local.plate_detection(img)
+#plates = local.plate_detection(img)
 
-for plate in plates:
-	print('----------------------', recognize(plate))
-	cv2.imshow('Plate', plate)
-	cv2.waitKey()
+#for plate in plates:
+#	print('----------------------', recognize(plate))
+#	cv2.imshow('Plate', plate)
+#	cv2.waitKey()
 
 
 

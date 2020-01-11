@@ -126,7 +126,7 @@ def rotate_bound(image, angle):
     # grab the rotation matrix (applying the negative of the
     # angle to rotate clockwise), then grab the sine and cosine
     # (i.e., the rotation components of the matrix)
-    M = cv2.getRotationMatrix2D((cX, cY), -angle, 1.0)
+    M = cv2.getRotationMatrix2D((cX, cY), angle, 1.0)
     cos = np.abs(M[0, 0])
     sin = np.abs(M[0, 1])
 
@@ -141,11 +141,11 @@ def rotate_bound(image, angle):
     # perform the actual rotation and return the image
     return cv2.warpAffine(image, M, (nW, nH))
 
-def line_detection(im_gray, im_letters, im_plate, loops):
-    trans_gray = np.copy(im_gray)
+def line_detection(im_gray, im_letters, im_plate):
     new_im_letters = np.copy(im_letters)
     new_im_plate =np.copy(im_plate)
     green_im = np.copy(im_plate)
+    biggestw = 0
     # Apply edge detection method on the image
     contours1, _ = cv2.findContours(im_gray, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
     contours = contours1
@@ -153,7 +153,7 @@ def line_detection(im_gray, im_letters, im_plate, loops):
     licence_pic = np.zeros(0)
     im_arr_letters = []
     im_arr_plate = []
-
+    small = False
     for cnt in contours:
         if (cv2.contourArea(cnt) > 1000):
             approx = cv2.approxPolyDP(cnt, 0.025 * cv2.arcLength(cnt, True), True)
@@ -172,8 +172,15 @@ def line_detection(im_gray, im_letters, im_plate, loops):
                 #cv2.rectangle(green_im, (x, y), (w + x, h + y), (0, 255, 255), 2)
                 print("rectangle: x, y, w, h: ", x, y, w, h)
                 if w > h:
-                    licence_pic = new_im_letters[np.maximum(ya-10, 0):ya+ha+10, np.maximum(xa-10, 0):xa+wa+10]
-                    cv2.imshow('Licence pic', licence_pic)
+                    if w > biggestw:
+                        w = biggestw
+                        if w < 125:
+                            small = True
+                        else:
+                            small = False
+                    licence_pic_letters = new_im_letters[np.maximum(y-3, 0):y+h+3, np.maximum(x-3, 0):x+w+3]
+                    licence_pic_plate = new_im_plate[np.maximum(y-3, 0):y+h+3, np.maximum(x-3, 0):x+w+3]
+                    cv2.imshow('Licence pic', licence_pic_letters)
                     cv2.imshow('Detect green', green_im)
                     #gray_image = cv2.COLOR_RGB2GRAY(licence_pic)
                     targets = []
@@ -193,32 +200,25 @@ def line_detection(im_gray, im_letters, im_plate, loops):
                     print('pts1[0][0][0]', pts1[0][0][0])
                     myradians = math.atan2(pts1[3][0][1] - pts1[2][0][1], pts1[3][0][0] - pts1[2][0][0])
                     print(myradians)
-                    rotated_im = rotate_bound(licence_pic, myradians)
+                    mydegrees = math.degrees(myradians)
+                    rotated_im_letters = rotate_bound(licence_pic_letters, mydegrees)
+                    rotated_im_plate = rotate_bound(licence_pic_plate, mydegrees)
                     #M = cv2.getRotationMatrix2D(licence_pic, myradians, 1.0)
                     #cv2.warpAffine(licence_pic, M, )
-                    cv2.imshow('Rotated im', rotated_im)
+                    cv2.imshow('Rotated im letters', rotated_im_letters)
+                    cv2.imshow('Rotated im plate', rotated_im_plate)
                     #if loops > 0:
                     #    result_bw = transform_points(trans_gray, approx, targets)
                     #    results = line_detection(result_bw, result, loops - 1)
                     #    im_arr.append(results)
                     #else:
 
-                    im_arr_letters.append(result3D_plate)
-                    im_arr_letters.append(licence_pic)
-                    im_arr_plate.append(result3D_plate)
-                    im_arr_plate.append(result3D_letters)
-                    cv2.imshow('Transform3D', result3D_plate)
-
-            if (False):
-                approx = cv2.approxPolyDP(cnt, 0.025 * cv2.arcLength(cnt, True), True)
-                x, y, w, h = cv2.boundingRect(approx)
-                if w >= h:
-                    licence_pic = new_im_letters[np.maximum(y-15, 0):y+h+15, np.maximum(x-15, 0):x+w+15]
-                    licence_pic_plate = new_im_plate[np.maximum(y-15, 0):y+h+15, np.maximum(x-15, 0):x+w+15]
-                    im_arr_letters.append(licence_pic)
-                    im_arr_plate.append(licence_pic_plate)
+                    #im_arr_letters.append(result3D_plate)
+                    im_arr_letters.append(rotated_im_letters)
+                    im_arr_plate.append(rotated_im_plate)
+                    #im_arr_plate.append(result3D_letters)
     # This returns an array of r and theta values
-    return im_arr_letters, im_arr_plate
+    return im_arr_letters, im_arr_plate, small
 
 def interest_detection(im_gray, im):
     # Apply edge detection method on the image
@@ -237,8 +237,7 @@ def plate_detection(im):
     bgr_im = cv2.cvtColor(im, cv2.COLOR_BGR2RGB)
     im_plate, im_letters, max_color = get_licence_plate(bgr_im)
     print(max_color)
-    im_blur = cv2.GaussianBlur(im_plate, (9,9), 1)
-    im_gray = cv2.cvtColor(im_blur, cv2.COLOR_BGR2GRAY)
+    im_gray = cv2.cvtColor(im_plate, cv2.COLOR_BGR2GRAY)
     gray_stretch(im_gray)
     #im_gray = cv2.erode(im_gray, np.ones((5, 5), np.uint8), iterations=1)
     #im_gray = cv2.dilate(im_gray, np.ones((5, 5), np.uint8), iterations=1)
@@ -252,9 +251,8 @@ def plate_detection(im):
     #im_dil1 = cv2.dilate(im_er, kernel, iterations=3)
     #im_er1 = cv2.erode(im_dil1, kernel, iterations =3)
     im_dil2 = cv2.dilate(im_canny, kernel, iterations=1)
-    loops = 3
 
-    rect_detect, plate_detect = line_detection(im_dil2, im_letters, im_plate, loops)
+    rect_detect, plate_detect, small = line_detection(im_dil2, im_letters, im_plate)
     bin_plates = []
     print('Number of licence plates:', len(rect_detect))
     if len(rect_detect) > 0:
@@ -270,7 +268,10 @@ def plate_detection(im):
                 cv2.imshow(name0 + 'letters', image_gray)
                 ravel_img = ravel_img[ravel_img != 0]
                 #plt.hist(image_gray.ravel(),256,[1,256]); plt.show()
-                thres = np.median(ravel_img) - 20
+                if small == False:
+                    thres = np.median(ravel_img) - 20
+                else:
+                    thres = np.median(ravel_img)
                 thresname = 'Threshold_' + str(i)
                 print(thresname, thres)
                 bin_plate_low = cv2.threshold(image_gray, thres, 255, cv2.THRESH_BINARY_INV)

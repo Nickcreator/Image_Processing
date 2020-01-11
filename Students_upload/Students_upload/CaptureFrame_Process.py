@@ -56,7 +56,6 @@ def show_images(images):
     for i in images:
         (frameNr, timeStamp, frame) = i
         cv2.imshow('Frame number: %s, TimeStamp: %s' % (frameNr, timeStamp ), frame / 256)
-        print(frame)
         cv2.destroyAllWindows()
         cv2.waitKey()
         frame_images = Localization.plate_detection(frame)
@@ -82,5 +81,5 @@ def show_images(images):
 
 
 ## example for how to use the functions
-arr = CaptureFrame_Process('trainingsvideo.avi', 1.0, 'abc')
+arr = CaptureFrame_Process('trainingsvideo.avi', 0.75, 'abc')
 show_images(arr)

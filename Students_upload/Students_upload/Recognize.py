@@ -2,8 +2,6 @@ import cv2
 import numpy as np
 import time
 
-from sqlalchemy.ext.declarative import declared_attr
-
 import Students_upload.Students_upload.Localization as local
 import Students_upload.Students_upload.CaptureFrame_Process as cap
 

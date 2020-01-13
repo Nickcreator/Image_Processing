@@ -173,13 +173,14 @@ def line_detection(im_gray, im_letters, im_plate):
                 print("rectangle: x, y, w, h: ", x, y, w, h)
                 if w > h:
                     if w > biggestw:
-                        w = biggestw
+                        biggestw = w
                         if w < 125:
                             small = True
+                            print('setTrue')
                         else:
                             small = False
-                    licence_pic_letters = new_im_letters[np.maximum(y-3, 0):y+h+3, np.maximum(x-3, 0):x+w+3]
-                    licence_pic_plate = new_im_plate[np.maximum(y-3, 0):y+h+3, np.maximum(x-3, 0):x+w+3]
+                    licence_pic_letters = new_im_letters[np.maximum(y-3, 0):ya+ha+3, np.maximum(xa-3, 0):xa+wa+3]
+                    licence_pic_plate = new_im_plate[np.maximum(ya-3, 0):ya+ha+3, np.maximum(xa-3, 0):xa+wa+3]
                     cv2.imshow('Licence pic', licence_pic_letters)
                     cv2.imshow('Detect green', green_im)
                     #gray_image = cv2.COLOR_RGB2GRAY(licence_pic)
@@ -191,10 +192,10 @@ def line_detection(im_gray, im_letters, im_plate):
                     print("targets: ", targets)
                     #gray_licence_pic = cv2.COLOR_RGB2GRAY(licence_pic)
                     pts1 = order_points(approx, targets)
-                    pts2 = np.float32([[0, 0], [512, 0], [0, 110], [512, 110]])
-                    matrix3D = cv2.getPerspectiveTransform(pts1, pts2)
-                    result3D_plate = cv2.warpPerspective(new_im_plate, matrix3D, (512, 110))
-                    result3D_letters = cv2.warpPerspective(new_im_letters, matrix3D, (512, 110))
+                    # pts2 = np.float32([[0, 0], [512, 0], [0, 110], [512, 110]])
+                    # matrix3D = cv2.getPerspectiveTransform(pts1, pts2)
+                    # result3D_plate = cv2.warpPerspective(new_im_plate, matrix3D, (512, 110))
+                    # result3D_letters = cv2.warpPerspective(new_im_letters, matrix3D, (512, 110))
                     print('pts1', pts1)
                     print('pts1[0]', pts1[0])
                     print('pts1[0][0][0]', pts1[0][0][0])
@@ -218,24 +219,16 @@ def line_detection(im_gray, im_letters, im_plate):
                     im_arr_plate.append(rotated_im_plate)
                     #im_arr_plate.append(result3D_letters)
     # This returns an array of r and theta values
+    print(small)
     return im_arr_letters, im_arr_plate, small
-
-def interest_detection(im_gray, im):
-    # Apply edge detection method on the image
-#    contours, _ = cv2.findContours(im, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-#    print("len contours: ", len(contours))
-
-    corners = cv2.goodFeaturesToTrack(im_gray, 100, 0.01, 10)
-    corners = np.int0(corners)
-
-    for corner in corners:
-        x, y = corner.ravel()
-        cv2.circle(im, (x,y), 10, (0, 0, 255), 10)
-    return im
 
 def plate_detection(im):
     bgr_im = cv2.cvtColor(im, cv2.COLOR_BGR2RGB)
-    im_plate, im_letters, max_color = get_licence_plate(bgr_im)
+    print("shape bgr", np.shape(bgr_im))
+    color = [0,0,0]
+    top, bottom, left, right = [3] * 4
+    img_with_border = cv2.copyMakeBorder(bgr_im, top, bottom, left, right, cv2.BORDER_CONSTANT, value=color)
+    im_plate, im_letters, max_color = get_licence_plate(img_with_border)
     print(max_color)
     im_gray = cv2.cvtColor(im_plate, cv2.COLOR_BGR2GRAY)
     gray_stretch(im_gray)
@@ -262,7 +255,7 @@ def plate_detection(im):
             ravel_img = image_gray_plate.ravel()
             zeros = np.count_nonzero(image_gray_plate == 0)
             print("length: ", zeros/len(ravel_img))
-            if 100 * zeros/len(ravel_img) < 75:
+            if 100 * zeros/len(ravel_img) < 85:
                 name0 = "gray_plate_" + str(i)
                 cv2.imshow(name0, image_gray_plate)
                 cv2.imshow(name0 + 'letters', image_gray)
@@ -278,7 +271,7 @@ def plate_detection(im):
                 bin_plates.append(bin_plate_low[1])
                 name1 = "bin_plate_thres_" + str(i)
                 cv2.imshow(name1, bin_plate_low[1])
-    im_stack = stack_images(0.5, ([im, im_canny, im_dil2],
+    im_stack = stack_images(0.5, ([img_with_border, im_canny, im_dil2],
                                     [im_plate, im_letters, car_binary_rect]))
     cv2.imshow('Result', im_stack)
     cv2.waitKey()

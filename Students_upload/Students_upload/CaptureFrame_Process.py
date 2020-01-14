@@ -3,8 +3,8 @@ import numpy as np
 from Students_upload.Students_upload import Recognize as rec
 from Students_upload.Students_upload import Localization as local
 import time
+#from difflib import SequenceMatcher
 # from Students_upload.Students_upload import Recognize
-import matplotlib as plt
 
 """
 In this file, you will define your own CaptureFrame_Process funtion. In this function,
@@ -50,7 +50,7 @@ def capture(file_path, sample_frequency):
     counter = 0
     for i in np.arange(int(lenNew)):
         for j in np.arange(int(fps / sample_frequency) - 1):  # skip the next (fps/sampling_frequency) - 1 frames
-            counter = counter + 1
+            counter += 1
             ret, frame = vidcap.read()
         images[i] = (counter, counter / fps, frame)
 
@@ -58,21 +58,44 @@ def capture(file_path, sample_frequency):
 
 
 def recAndSave(images, save_path):
-    data = []
+    templatesN = []
+    for i in np.arange(10):
+        templatesN.append(cv2.imread(f"SameSizeNumbers/{i}.bmp", 0))
+    templatesL = []
+    for i in range(1, 18):
+        templatesL.append(cv2.imread(f"SameSizeLetters/{i}.bmp", 0))
+    data = ["License plate,Frame no.,Timestamp(seconds)".split(',')]
+    result = ''
+    strength = 0
     for image in images:
         (frameNr, timeStamp, frame) = image
         localised = local.plate_detection(frame)
         for locals in localised:
-            result = rec.recognize(locals)
-            if result is None:
+            recognized = rec.recognize(locals, templatesN, templatesL)
+            if recognized is None:
                 continue
-            data.append([result, frameNr, timeStamp])
+            if recognized == -1:
+                continue  ## Nick do your thing
+            result, strength = recognized
+            data.append([str(result), str(frameNr) + ' ', timeStamp])
+
     import csv
-    myFile = open(save_path, 'w')
+    myFile = open(save_path, 'w', newline='')
     with myFile:
         writer = csv.writer(myFile)
         writer.writerows(data)
 
+def reco(image):
+    (frameNr, timeStamp, frame) = image
+    localised = local.plate_detection(frame)
+    for locals in localised:
+        recognized = rec.recognize(locals)
+        if recognized is None:
+            continue
+        if recognized == -1:
+            continue  ## Nick do your thing
+        result, strength = recognized
+        return [str(result), str(frameNr) + ' ', timeStamp]
 
 def show_images(images):
     for i in images:

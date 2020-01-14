@@ -91,58 +91,6 @@ def segment(img):
 	return letters
 
 
-# Segments into seperate letter
-# def segment1(img):
-# 	cv2.imshow('img', img)
-# 	cv2.waitKey()
-#
-# 	# Remove noise
-# 	img = cv2.dilate(img, np.ones((5, 5), np.uint8), iterations=1)
-# 	img = cv2.erode(img, np.ones((5, 5), np.uint8), iterations=1)
-#
-# 	cv2.imshow('after dilating & eroding', img)
-# 	cv2.waitKey()
-# 	# Fill frame
-# 	# h, w = img.shape[:2]
-# 	# mask = np.zeros((h + 2, w + 2), np.uint8)
-# 	# cv2.floodFill(img, mask, (0,0), 0)
-# 	# cv2.floodFill(img, mask, (0,h-1), 0)
-# 	# cv2.floodFill(img, mask, (w-1,0), 0)
-# 	# cv2.floodFill(img, mask, (w-1,h-1), 0)
-#
-# 	cv2.imshow('after filling frame', img)
-# 	cv2.waitKey()
-#
-# 	# Split letters
-# 	letterList = []
-# 	(height, width) = np.shape(img)
-# 	rowStart = 0
-# 	for col in np.arange(width):
-# 		rowEmpty = True
-# 		for row in np.arange(height):
-# 			if img[row][col] == 255:
-# 				rowEmpty = False
-# 				break
-# 		if rowEmpty == True:  # never true
-# 			letter = imageUntilColumn(img, height, rowStart, col)
-# 			if not np.array_equal(letter, np.array([-1])):
-# 				# letter = scaleToData(letter, 0)
-# 				(widthL, heightL) = letter.shape
-# 				if widthL > 0 and heightL > 0:
-# 					letterList.append(letter)
-# 					cv2.imshow('letter', letter)
-# 					cv2.waitKey()
-# 			rowStart = col
-# 	return letterList
-
-
-#def imageUntilColumn(img, height, rowStart, rowEnd):
-#	if rowEnd - rowStart > 1:
-#		letter = np.split(img.T, [rowStart, rowEnd])[1]
-#		return letter.T
-#	return np.array([-1])
-
-
 # Read the letters
 def read(letters, templatesN, templatesL):
 	if letters is None:
@@ -198,9 +146,9 @@ def read(letters, templatesN, templatesL):
 		resultList.append(i)
 
 	if num_numbers > 4 or num_letters > 4:
+		print('----------------------------------')
 		return
 	string = ''.join("".join(str(x[0]) for x in resultList))
-	print('result: ', string)
 	return string, strength
 
 
@@ -285,23 +233,6 @@ def getDifference(img, template):
 	(imgHeight, imgWidth) = img.shape
 	(temHeight, temWidth) = template.shape
 
-	# factor = temHeight/imgHeight
-	# imgHeight = int(imgHeight * factor)
-	# imgWidth = int(imgWidth * factor)
-	# img = cv2.resize(img, (imgWidth, imgHeight))
-
-	# cv2.imshow('template', template)
-	# cv2.imshow('letter', img)
-	#  cv2.waitKey()
-
-	'''difference = 0
-	for i in np.arange(temHeight):
-		for j in np.arange(min(imgWidth, temWidth)):
-			#print(j)
-
-			if(template[i][j] != img[i][j]):
-				difference = difference + 1
-	return difference'''
 
 	similarity = 0
 	for i in np.arange(min(temHeight, imgHeight)):
@@ -312,13 +243,3 @@ def getDifference(img, template):
 				similarity += 1
 	return similarity
 
-# img = cv2.imread('nl_gl-395-x_template.jpg', 1)
-# (a, b, img) = cap.CaptureFrame_Process("trainingsvideo.avi", 1, '')[7]
-# cv2.imshow('Hello', img)
-# cv2.waitKey()
-# plates = local.plate_detection(img)
-
-# for plate in plates:
-#	print('----------------------', recognize(plate))
-#	cv2.imshow('Plate', plate)
-#	cv2.waitKey()

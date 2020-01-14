@@ -21,54 +21,6 @@ Hints:
 	1. You may need to define other functions, such as crop and adjust function
 	2. You may need to define two ways for localizing plates(yellow or other colors)
 """
-# def empty():
-#    pass
-#
-# cv2.namedWindow("Parameters")
-# cv2.resizeWindow("Parameters", 640, 240)
-# cv2.createTrackbar("Threshold1", "Parameters", 100, 255, empty)
-# cv2.createTrackbar("Threshold2", "Parameters", 100, 255, empty)
-
-def stack_images(scale, images):
-    rows = len(images)
-    cols = len(images[0])
-    rowsAvailable = isinstance(images[0], list)
-    width = images[0][0].shape[1]
-    height = images[0][0].shape[0]
-    if rowsAvailable:
-        for x in range(0, rows):
-            for y in range(0, cols):
-                if images[x][y].shape[:2] == images[0][0].shape[:2]:
-                    images[x][y] = cv2.resize(images[x][y], (0,0), None, scale, scale)
-                else:
-                    images[x][y] = cv2.resize(images[x][y], (images[0][0].shape[1], images[0][0].shape[0]), None, scale, scale)
-                if len(images[x][y].shape) == 2:
-                    images[x][y] = cv2.cvtColor(images[x][y], cv2.COLOR_GRAY2BGR)
-        imageBlank = np.zeros((height, width))
-        hor = [imageBlank]* rows
-        hor_con = [imageBlank]* rows
-        for x in range(0, rows):
-            hor[x] = np.hstack(images[x])
-        ver = np.vstack(hor)
-    else:
-        for x in range(0, rows):
-            if images[x].shape[:2] == images[0].shape[:2]:
-                images[x] = cv2.resize(images[x], (0,0), None, scale, scale)
-            else:
-                images[x] = cv2.resize(images[x], (images[0].shape[1], images[0].shape[0]), None, scale, scale)
-            if len(images[x].shape) == 2:
-                images[x] = cv2.cvtColor(images[x], cv2.COLOR_GRAY2BGR)
-        hor = np.hstack(images)
-        ver= hor
-    return ver
-
-# def gray_stretch(img):
-#     for i in range(0, len(img)):
-#         for j in range(0, len(img[i])):
-#             a = (255/50)*(img[i,j]-50)
-#             b = min(a,255)
-#             img[i,j] = max(b,0)
-#     return img
 
 def get_licence_plate(image):
     im_hsv_plate = cv2.cvtColor(image, cv2.COLOR_RGB2HSV)
@@ -244,41 +196,46 @@ def plate_detection(im):
 
     letters_detect, plate_detect, size = line_detection(im_canny, im_gray_plate, bgr_im)
     bin_plates = []
+    gray_images = []
+    thres_list = []
     # res = cv2.bitwise_and(maskim, bgr_im, mask=maskim)
-#     # cv2.imshow('res', res)
+    #     # cv2.imshow('res', res)
     if len(letters_detect) > 0:
         for i, image in enumerate(letters_detect):
             ravel_img = plate_detect[i].ravel()
             zeros = np.count_nonzero(plate_detect[i] == 0)
-#             # print("length: ", zeros/len(ravel_img))
-            if 100 * zeros/len(ravel_img) < 85:
+            #             # print("length: ", zeros/len(ravel_img))
+            if 100 * zeros / len(ravel_img) < 85:
                 name0 = 'gray_plate_' + str(i)
                 # cv2.imshow(name0 + 'plate', plate_detect[i])
                 # cv2.imshow(name0 + 'letters', letters_detect[i])
                 ravel_img = ravel_img[ravel_img != 0]
-                #plt.hist(image_gray.ravel(),256,[1,256]); plt.show()
-                correction = min(size*0.40, 31)
+                # plt.hist(image_gray.ravel(),256,[1,256]); plt.show()
+                correction = min(size * 0.51, 31)
                 thres = np.median(ravel_img) - correction
+                thres_list.append(thres)
                 # print(correction)
                 # thresname = 'Threshold_' + str(i)
-#                 # print(thresname, thres)
+                #                 # print(thresname, thres)
                 # det1 = "letters_detect_" + str(i)
-#                 # cv2.imshow(det1, letters_detect[i])
+                #                 # cv2.imshow(det1, letters_detect[i])
                 return_image = get_plate_thres(letters_detect[i])
                 gray_letters = cv2.cvtColor(return_image, cv2.COLOR_BGR2GRAY)
+                gray_images.append(gray_letters)
                 bin_plate_low = cv2.threshold(gray_letters, thres, 255, cv2.THRESH_BINARY_INV)
                 bin_plates.append(bin_plate_low[1])
                 name1 = "bin_plate_thres_" + str(i)
                 # cv2.imshow(name1, bin_plate_low[1])
     # im_stack = stack_images(0.5, ([img_with_border, im_canny, im_canny],
     #                                  [im_plate, im_letters, car_binary[1]]))
-#     # cv2.imshow('Result', im_stack)
+    #     # cv2.imshow('Result', im_stack)
     end = time.time()
     # print('time', end - start)
-    #cv2.waitKey()
-    #cv2.destroyAllWindows()
-    return bin_plates
+    # cv2.waitKey()
+    # cv2.destroyAllWindows()
+    return gray_images, bin_plates, thres_list
 
 
-#im = cv2.imread('Nummerbord.jpg', cv2.IMREAD_COLOR)
-#binary_im = plate_detection(im)
+def rethreshold(gray_im, thres):
+    bin_plate_low = cv2.threshold(gray_im, thres - 10, 255, cv2.THRESH_BINARY_INV)
+    return [bin_plate_low[1]]

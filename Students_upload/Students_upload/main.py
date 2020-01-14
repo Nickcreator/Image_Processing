@@ -1,16 +1,14 @@
 import argparse
 import os
-from Students_upload.Students_upload import Localization
-from Students_upload.Students_upload import Recognize
 from Students_upload.Students_upload import CaptureFrame_Process
 
 # define the required arguments: video path(file_path), sample frequency(second), saving path for final result table
 # for more information of 'argparse' module, see https://docs.python.org/3/library/argparse.html
 def get_args():
 	parser = argparse.ArgumentParser()
-	parser.add_argument('--file_path', type=str, default='TrainingVideo.avi')
-	parser.add_argument('--output_path', type=str, default=None)
-	parser.add_argument('--sample_frequency', type=int, default=2)
+	parser.add_argument('--file_path', type=str, default='trainingsvideo.avi')
+	parser.add_argument('--output_path', type=str, default='output.csv')
+	parser.add_argument('--sample_frequency', type=int, default=1/12)
 	args = parser.parse_args()
 	return args
 
@@ -24,3 +22,5 @@ if __name__ == '__main__':
 	file_path = args.file_path
 	sample_frequency = args.sample_frequency
 	CaptureFrame_Process.CaptureFrame_Process(file_path, sample_frequency, output_path)
+
+	#CaptureFrame_Process('trainingsvideo.avi', 1 / 12, 'helloThisIsATest.csv')
